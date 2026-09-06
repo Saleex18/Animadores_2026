@@ -544,6 +544,11 @@
             <input id="celular" name="celular" type="tel" placeholder="Ejemplo: 987654321" inputmode="numeric" autocomplete="tel" maxlength="9" required />
           </div>
 
+          <div class="campo">
+            <label for="cumpleanos">Fecha de cumpleaños</label>
+            <input id="cumpleanos" name="cumpleanos" type="date" required />
+          </div>
+
           <button class="boton" type="submit">Continuar</button>
           <div class="error" id="error"></div>
         </form>
@@ -614,22 +619,43 @@
   </main>
 
   <script>
+    const SUPABASE_URL = "https://smizdwogscznptgacyor.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_ffgsRkPtXVHKSwdHPcvcFA_8FxDMRKH";
+
     const form = document.getElementById("formRegistro");
     const registroPantalla = document.getElementById("registroPantalla");
     const mensajePantalla = document.getElementById("mensajePantalla");
     const error = document.getElementById("error");
     const celular = document.getElementById("celular");
+    const cumpleanosInput = document.getElementById("cumpleanos");
+
+    let adminPassword = "";
+    let adminRegistros = [];
+
+    if (cumpleanosInput) {
+      cumpleanosInput.max = new Date().toISOString().split("T")[0];
+    }
 
     celular.addEventListener("input", () => {
       celular.value = celular.value.replace(/\D/g, "").slice(0, 9);
     });
 
-    form.addEventListener("submit", (e) => {
+    function supabaseHeaders() {
+      return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json"
+      };
+    }
+
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const nombres = document.getElementById("nombres").value.trim();
       const apellidos = document.getElementById("apellidos").value.trim();
       const numero = celular.value.trim();
+      const cumpleanos = cumpleanosInput.value;
+      const submit = form.querySelector('button[type="submit"]');
 
       if (!nombres || !apellidos) {
         mostrarError("Completa tus nombres y apellidos.");
@@ -641,23 +667,46 @@
         return;
       }
 
-      const registro = {
-        nombres,
-        apellidos,
-        celular: numero,
-        fecha: new Date().toISOString()
-      };
+      if (!cumpleanos) {
+        mostrarError("Selecciona tu fecha de cumpleaños.");
+        return;
+      }
 
-      const registros = JSON.parse(localStorage.getItem("registros_animadores_2026") || "[]");
-      registros.push(registro);
-      localStorage.setItem("registros_animadores_2026", JSON.stringify(registros));
+      try {
+        error.style.display = "none";
+        submit.disabled = true;
+        submit.textContent = "Guardando...";
 
-      document.getElementById("nombreSaludo").textContent = "¡Bienvenido, " + nombres.split(" ")[0] + "!";
-      
-      error.style.display = "none";
-      registroPantalla.style.display = "none";
-      mensajePantalla.style.display = "block";
-      window.scrollTo({ top: 0, behavior: "smooth" });
+        const respuesta = await fetch(SUPABASE_URL + "/rest/v1/animadores_2026", {
+          method: "POST",
+          headers: {
+            ...supabaseHeaders(),
+            "Prefer": "return=minimal"
+          },
+          body: JSON.stringify({
+            nombres,
+            apellidos,
+            celular: numero,
+            cumpleanos
+          })
+        });
+
+        if (!respuesta.ok) {
+          throw new Error("No se pudo guardar el registro.");
+        }
+
+        document.getElementById("nombreSaludo").textContent =
+          "¡Bienvenido, " + nombres.split(" ")[0] + "!";
+
+        registroPantalla.style.display = "none";
+        mensajePantalla.style.display = "block";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (err) {
+        mostrarError("No se pudo guardar tu registro. Revisa tu conexión e inténtalo nuevamente.");
+      } finally {
+        submit.disabled = false;
+        submit.textContent = "Continuar";
+      }
     });
 
     function mostrarError(texto) {
@@ -665,20 +714,10 @@
       error.style.display = "block";
     }
 
-    function escapar(texto) {
-      const div = document.createElement("div");
-      div.textContent = texto;
-      return div.innerHTML;
-    }
-  
-    // PANEL PRIVADO DE ADMINISTRADOR
-    // Cambia esta clave antes de publicar la página.
-    const CLAVE_ADMIN = "Animadores2026";
-
-    function abrirAdmin(){
+    function abrirAdmin() {
       const modal = document.getElementById("modalAdmin");
       modal.classList.add("activo");
-      modal.setAttribute("aria-hidden","false");
+      modal.setAttribute("aria-hidden", "false");
       document.getElementById("adminClave").value = "";
       document.getElementById("adminMsg").style.display = "none";
       document.getElementById("adminLogin").style.display = "block";
@@ -686,55 +725,96 @@
       setTimeout(() => document.getElementById("adminClave").focus(), 100);
     }
 
-    function cerrarAdmin(){
+    function cerrarAdmin() {
       const modal = document.getElementById("modalAdmin");
       modal.classList.remove("activo");
-      modal.setAttribute("aria-hidden","true");
+      modal.setAttribute("aria-hidden", "true");
       salirAdmin();
     }
 
-    function validarAdmin(){
+    async function llamarAdminRPC(nombreFuncion, password) {
+      return fetch(SUPABASE_URL + "/rest/v1/rpc/" + nombreFuncion, {
+        method: "POST",
+        headers: supabaseHeaders(),
+        body: JSON.stringify({ p_password: password })
+      });
+    }
+
+    async function validarAdmin() {
       const clave = document.getElementById("adminClave").value;
       const msg = document.getElementById("adminMsg");
 
-      if(clave !== CLAVE_ADMIN){
-        msg.textContent = "Clave incorrecta.";
+      if (!clave) {
+        msg.textContent = "Ingresa la clave de administrador.";
         msg.style.display = "block";
         return;
       }
 
-      msg.style.display = "none";
-      document.getElementById("adminLogin").style.display = "none";
-      document.getElementById("adminPanel").style.display = "block";
-      cargarRegistrosAdmin();
-    }
+      try {
+        msg.style.display = "block";
+        msg.textContent = "Verificando...";
 
-    function salirAdmin(){
-      const login = document.getElementById("adminLogin");
-      const panel = document.getElementById("adminPanel");
-      if(login) login.style.display = "block";
-      if(panel) panel.style.display = "none";
-      const clave = document.getElementById("adminClave");
-      if(clave) clave.value = "";
-    }
+        const respuesta = await llamarAdminRPC("admin_list_animadores_2026", clave);
 
-    function obtenerRegistros(){
-      try{
-        return JSON.parse(localStorage.getItem("registros_animadores_2026") || "[]");
-      }catch(e){
-        return [];
+        if (!respuesta.ok) {
+          msg.textContent = "Clave incorrecta.";
+          return;
+        }
+
+        adminPassword = clave;
+        adminRegistros = await respuesta.json();
+
+        msg.style.display = "none";
+        document.getElementById("adminLogin").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
+        renderizarRegistros();
+      } catch (err) {
+        msg.textContent = "No se pudo conectar con el almacenamiento compartido.";
+        msg.style.display = "block";
       }
     }
 
-    function cargarRegistrosAdmin(){
-      const registros = obtenerRegistros();
+    function salirAdmin() {
+      adminPassword = "";
+      adminRegistros = [];
+
+      const login = document.getElementById("adminLogin");
+      const panel = document.getElementById("adminPanel");
+
+      if (login) login.style.display = "block";
+      if (panel) panel.style.display = "none";
+
+      const clave = document.getElementById("adminClave");
+      if (clave) clave.value = "";
+    }
+
+    async function cargarRegistrosAdmin() {
+      if (!adminPassword) return;
+
+      try {
+        const respuesta = await llamarAdminRPC("admin_list_animadores_2026", adminPassword);
+
+        if (!respuesta.ok) {
+          alert("No se pudieron cargar los registros.");
+          return;
+        }
+
+        adminRegistros = await respuesta.json();
+        renderizarRegistros();
+      } catch (err) {
+        alert("No se pudo conectar con el almacenamiento compartido.");
+      }
+    }
+
+    function renderizarRegistros() {
+      const registros = adminRegistros;
       const tbody = document.getElementById("tablaRegistros");
       const vacio = document.getElementById("adminVacio");
       const contenedor = document.getElementById("tablaContenedor");
 
       tbody.innerHTML = "";
 
-      if(!registros.length){
+      if (!registros.length) {
         contenedor.style.display = "none";
         vacio.style.display = "block";
         return;
@@ -743,20 +823,24 @@
       contenedor.style.display = "block";
       vacio.style.display = "none";
 
-      registros.slice().reverse().forEach((r, i) => {
+      registros.forEach((r, i) => {
         const tr = document.createElement("tr");
-        const fecha = r.fecha ? new Date(r.fecha).toLocaleString("es-PE") : "";
+        const fechaRegistro = r.created_at
+          ? new Date(r.created_at).toLocaleString("es-PE")
+          : "";
+
         const valores = [
-          registros.length - i,
+          i + 1,
           r.nombres || "",
           r.apellidos || "",
           r.celular || "",
-          fecha
+          formatearCumpleanos(r.cumpleanos),
+          fechaRegistro
         ];
 
-        valores.forEach(v => {
+        valores.forEach((valor) => {
           const td = document.createElement("td");
-          td.textContent = v;
+          td.textContent = valor;
           tr.appendChild(td);
         });
 
@@ -764,23 +848,47 @@
       });
     }
 
-    function exportarCSV(){
-      const registros = obtenerRegistros();
-      if(!registros.length){
+    function formatearCumpleanos(valor) {
+      if (!valor) return "";
+      const partes = valor.split("-");
+      if (partes.length !== 3) return valor;
+      return partes[2] + "/" + partes[1] + "/" + partes[0];
+    }
+
+    function exportarCSV() {
+      if (!adminRegistros.length) {
         alert("No hay registros para exportar.");
         return;
       }
 
-      const filas = [["Nombres","Apellidos","Celular","Fecha"]];
-      registros.forEach(r => filas.push([
-        r.nombres || "",
-        r.apellidos || "",
-        r.celular || "",
-        r.fecha ? new Date(r.fecha).toLocaleString("es-PE") : ""
-      ]));
+      const filas = [[
+        "Nombres",
+        "Apellidos",
+        "Celular",
+        "Fecha de cumpleaños",
+        "Fecha de registro"
+      ]];
 
-      const csv = filas.map(f => f.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(",")).join("\n");
-      const blob = new Blob(["\ufeff" + csv], {type:"text/csv;charset=utf-8;"});
+      adminRegistros.forEach((r) => {
+        filas.push([
+          r.nombres || "",
+          r.apellidos || "",
+          r.celular || "",
+          formatearCumpleanos(r.cumpleanos),
+          r.created_at ? new Date(r.created_at).toLocaleString("es-PE") : ""
+        ]);
+      });
+
+      const csv = filas
+        .map((fila) =>
+          fila.map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(",")
+        )
+        .join("\n");
+
+      const blob = new Blob(["\ufeff" + csv], {
+        type: "text/csv;charset=utf-8;"
+      });
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -791,20 +899,42 @@
       URL.revokeObjectURL(url);
     }
 
-    function borrarRegistros(){
-      if(!confirm("¿Seguro que deseas borrar todos los registros? Esta acción no se puede deshacer.")) return;
-      localStorage.removeItem("registros_animadores_2026");
-      cargarRegistrosAdmin();
+    async function borrarRegistros() {
+      if (!adminPassword) return;
+
+      if (!confirm("¿Seguro que deseas borrar todos los registros? Esta acción no se puede deshacer.")) {
+        return;
+      }
+
+      try {
+        const respuesta = await llamarAdminRPC(
+          "admin_delete_all_animadores_2026",
+          adminPassword
+        );
+
+        if (!respuesta.ok) {
+          alert("No se pudieron borrar los registros.");
+          return;
+        }
+
+        adminRegistros = [];
+        renderizarRegistros();
+      } catch (err) {
+        alert("No se pudo conectar con el almacenamiento compartido.");
+      }
     }
 
     document.addEventListener("keydown", (e) => {
-      if(e.key === "Escape") cerrarAdmin();
-      if(e.key === "Enter" && document.getElementById("modalAdmin")?.classList.contains("activo")
-         && document.getElementById("adminLogin").style.display !== "none"){
+      if (e.key === "Escape") cerrarAdmin();
+
+      if (
+        e.key === "Enter" &&
+        document.getElementById("modalAdmin")?.classList.contains("activo") &&
+        document.getElementById("adminLogin").style.display !== "none"
+      ) {
         validarAdmin();
       }
     });
-
   </script>
 
   <div class="modal-admin" id="modalAdmin" aria-hidden="true">
@@ -829,6 +959,7 @@
 
         <div id="adminPanel" style="display:none;">
           <div class="admin-tools">
+            <button type="button" onclick="cargarRegistrosAdmin()">Actualizar</button>
             <button type="button" onclick="exportarCSV()">Exportar CSV</button>
             <button class="peligro" type="button" onclick="borrarRegistros()">Borrar registros</button>
             <button type="button" onclick="salirAdmin()">Cerrar sesión</button>
@@ -842,6 +973,7 @@
                   <th>Nombres</th>
                   <th>Apellidos</th>
                   <th>Celular</th>
+                  <th>Fecha de cumpleaños</th>
                   <th>Fecha de registro</th>
                 </tr>
               </thead>
