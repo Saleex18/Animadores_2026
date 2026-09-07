@@ -525,7 +525,7 @@
       <div class="contenido">
         <p class="intro">
           Nos alegra mucho que quieras formar parte de esta experiencia.
-          Registra primero tus datos y luego verás el mensaje de bienvenida.
+          
         </p>
 
         <form id="formRegistro">
@@ -545,7 +545,7 @@
           </div>
 
           <div class="campo">
-            <label for="cumpleanos">Fecha de cumpleaños</label>
+            <label for="cumpleanos">Fecha de nacimiento</label>
             <input id="cumpleanos" name="cumpleanos" type="date" required />
           </div>
 
@@ -583,36 +583,29 @@
 
         <div class="mensaje">
           <p>
-            Hoy están dando un paso muy bonito al querer convertirse en <strong>animadores</strong>.
-            Tal vez al inicio sientan nervios, dudas o piensen que todavía les falta mucho por aprender,
-            pero recuerden que nadie comienza sabiendo todo. Lo importante es tener un corazón dispuesto
-            a servir, escuchar y acompañar a los demás.
+            Chicos, si alguna vez han sentido el deseo de ayudar, compartir su fe y acompañar a otros jóvenes,
+            esta puede ser una bonita oportunidad para ustedes. 💙
           </p>
 
           <p>
-            Ser animador no significa solamente estar al frente de un grupo o enseñar un tema; significa
-            convertirse en un amigo, un ejemplo y una persona que pueda ayudar a otros jóvenes a acercarse más a Dios.
+            Los invitamos a animarse a formar parte de esta misión como <strong>animadores</strong>,
+            acompañando a más chicos en su camino, escuchándolos, apoyándolos y ayudándolos a acercarse
+            cada vez más a Dios.
           </p>
 
           <p>
-            Habrá momentos de cansancio y dificultades, pero también habrá sonrisas, amistades, experiencias y recuerdos
-            que se quedarán con ustedes para siempre. Muchas veces, sin darse cuenta, una palabra, un consejo o simplemente
-            estar presentes puede marcar la vida de alguien.
+            No necesitan saberlo todo ni sentirse completamente preparados desde el inicio; lo más importante
+            es tener las ganas de servir, aprender y dar lo mejor de ustedes.
           </p>
 
           <p>
-            No tengan miedo de empezar. Confíen en ustedes, en el equipo que los acompañará y, sobre todo, en Dios.
-            Él no llama a personas perfectas; llama a personas dispuestas a decir: <strong>“Aquí estoy, quiero servir”.</strong>
-          </p>
-
-          <p>
-            Que esta nueva etapa sea el comienzo de una experiencia llena de aprendizaje, alegría y fe.
-            Esperamos que algún día ustedes también puedan mirar atrás y darse cuenta de cuántas vidas ayudaron a transformar.
+            A veces una palabra, un consejo o simplemente estar presente puede hacer una gran diferencia
+            en la vida de alguien.
           </p>
         </div>
 
         <div class="cierre">
-          Bienvenidos a esta hermosa misión de ser animadores. 💙
+          <strong>Anímense a dar este paso y a vivir una experiencia que también puede transformar sus propias vidas. 🙏✨</strong>
         </div>
       </div>
     </section>
@@ -668,7 +661,7 @@
       }
 
       if (!cumpleanos) {
-        mostrarError("Selecciona tu fecha de cumpleaños.");
+        mostrarError("Selecciona tu fecha de nacimiento.");
         return;
       }
 
@@ -865,7 +858,7 @@
         "Nombres",
         "Apellidos",
         "Celular",
-        "Fecha de cumpleaños",
+        "Fecha de nacimiento",
         "Fecha de registro"
       ]];
 
@@ -973,7 +966,7 @@
                   <th>Nombres</th>
                   <th>Apellidos</th>
                   <th>Celular</th>
-                  <th>Fecha de cumpleaños</th>
+                  <th>Fecha de nacimiento</th>
                   <th>Fecha de registro</th>
                 </tr>
               </thead>
